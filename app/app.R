@@ -18,60 +18,104 @@ sales_data <- read_csv("../data/cleaned_global_sales.csv")
 # -------------------------
 # UI
 # -------------------------
-
-ui <- fluidPage(
+ui <- navbarPage(
   
-  titlePanel("🌍 Global Sales Dashboard"),
+  title = "🌍 Global Sales Dashboard",
   
-  br(),
-  
-  # Region Filter
-  fluidRow(
-    column(
-      width = 4,
-      selectInput(
-        inputId = "region_filter",
-        label = "Select Region:",
-        choices = c("All", sort(unique(sales_data$region))),
-        selected = "All"
-      )
-    )
+  theme = bslib::bs_theme(
+    version = 5,
+    bootswatch = "darkly"
   ),
   
-  br(),
+  # -------------------------
+  # TAB 1 — Overview
+  # -------------------------
   
-  # KPI Row
-  fluidRow(
+  tabPanel(
+    "Overview",
     
-    column(
-      width = 6,
-      wellPanel(
-        h4("Total Global Sales"),
-        h2(textOutput("total_sales_kpi"))
+    br(),
+    
+    fluidRow(
+      column(
+        width = 4,
+        selectInput(
+          "region_filter",
+          "Select Region:",
+          choices = c("All", sort(unique(sales_data$region))),
+          selected = "All"
+        )
       )
     ),
     
-    column(
-      width = 6,
-      wellPanel(
-        h4("Total Global Profit"),
-        h2(textOutput("total_profit_kpi"))
+    br(),
+    
+    fluidRow(
+      column(
+        width = 6,
+        wellPanel(
+          h4("Total Sales"),
+          h2(textOutput("total_sales_kpi"))
+        )
+      ),
+      
+      column(
+        width = 6,
+        wellPanel(
+          h4("Total Profit"),
+          h2(textOutput("total_profit_kpi"))
+        )
+      )
+    ),
+    
+    br(),
+    
+    fluidRow(
+      column(
+        width = 12,
+        h4("Sales by Category"),
+        plotlyOutput("category_plot")
       )
     )
-    
   ),
   
-  br(),
+  # -------------------------
+  # TAB 2 — Trends
+  # -------------------------
   
-  # Chart Section
-  fluidRow(
-    column(
-      width = 12,
-      h3("📊 Sales by Category"),
-      plotlyOutput("category_plot")
+  tabPanel(
+    "Trends",
+    
+    br(),
+    
+    fluidRow(
+      column(
+        width = 12,
+        h4("Sales Trend Over Time"),
+        plotlyOutput("trend_plot")
+      )
+    )
+  ),
+  
+  # -------------------------
+  # TAB 3 — Region Comparison
+  # -------------------------
+  
+  tabPanel(
+    "Region Comparison",
+    
+    br(),
+    
+    fluidRow(
+      column(
+        width = 12,
+        h4("Sales by Region"),
+        plotlyOutput("region_plot")
+      )
     )
   )
 )
+
 
 # -------------------------
 # Server
