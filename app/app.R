@@ -13,6 +13,16 @@ ui <- fluidPage(
   
   br(),
   
+  # Region Filter
+  selectInput(
+    inputId = "region_filter",
+    label = "Select Region:",
+    choices = c("All", unique(sales_data$region)),
+    selected = "All"
+  ),
+  
+  br(),
+  
   fluidRow(
     
     column(
@@ -31,28 +41,45 @@ ui <- fluidPage(
 )
 
 
-
 # -------------------------
 # Server (Logic)
 # -------------------------
 
+
+  
 server <- function(input, output) {
   
-  # Calculate KPIs
-  total_sales  <- sum(sales_data$sales, na.rm = TRUE)
-  total_profit <- sum(sales_data$profit, na.rm = TRUE)
-  
-  # Send Sales to UI
-  output$total_sales_kpi <- renderText({
-    paste("$", format(round(total_sales, 2), big.mark = ","), sep = "")
+  # Reactive filtered data
+  filtered_data <- reactive({
+    
+    if (input$region_filter == "All") {
+      sales_data
+    } else {
+      sales_data |> 
+        filter(region == input$region_filter)
+    }
+    
   })
   
-  # Send Profit to UI
+  # Calculate KPIs from filtered data
+  output$total_sales_kpi <- renderText({
+    
+    total_sales <- sum(filtered_data()$sales, na.rm = TRUE)
+    
+    paste("$", format(round(total_sales, 2), big.mark = ","), sep = "")
+    
+  })
+  
   output$total_profit_kpi <- renderText({
+    
+    total_profit <- sum(filtered_data()$profit, na.rm = TRUE)
+    
     paste("$", format(round(total_profit, 2), big.mark = ","), sep = "")
+    
   })
   
 }
+
 
 
 
