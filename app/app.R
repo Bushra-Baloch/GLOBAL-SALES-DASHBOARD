@@ -29,6 +29,19 @@ ui <- navbarPage(
     bootswatch = "darkly"
   ),
   
+  # Add smooth fade animation
+  header = tags$head(
+    tags$style(HTML("
+      .well {
+        animation: fadeIn 0.8s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    "))
+  ),
+  
   # -------------------------
   # TAB 1 — Overview
   # -------------------------
@@ -63,8 +76,9 @@ ui <- navbarPage(
     br(),
     
     fluidRow(
+      
       column(
-        width = 6,
+        width = 4,
         wellPanel(
           h4("Total Sales"),
           h2(textOutput("total_sales_kpi"))
@@ -72,10 +86,18 @@ ui <- navbarPage(
       ),
       
       column(
-        width = 6,
+        width = 4,
         wellPanel(
           h4("Total Profit"),
           h2(textOutput("total_profit_kpi"))
+        )
+      ),
+      
+      column(
+        width = 4,
+        wellPanel(
+          h4("Profit Margin"),
+          h2(textOutput("profit_margin_kpi"))
         )
       )
     ),
@@ -125,6 +147,24 @@ ui <- navbarPage(
         plotlyOutput("region_plot")
       )
     )
+  ),
+  
+  # -------------------------
+  # TAB 4 — Top Products
+  # -------------------------
+  
+  tabPanel(
+    "Top Products",
+    
+    br(),
+    
+    fluidRow(
+      column(
+        width = 12,
+        h4("Top 10 Products by Sales"),
+        plotlyOutput("top_products_plot")
+      )
+    )
   )
 )
 
@@ -134,20 +174,15 @@ ui <- navbarPage(
 
 server <- function(input, output) {
   
-  # -------------------------
-  # Multi-Dimensional Filtering
-  # -------------------------
-  
+  # Multi-dimensional filtering
   filtered_data <- reactive({
     
     data <- sales_data
     
-    # Region filter
     if (input$region_filter != "All") {
       data <- data |> filter(region == input$region_filter)
     }
     
-    # Year filter
     if (input$year_filter != "All") {
       data <- data |> filter(order_year == input$year_filter)
     }
@@ -155,96 +190,104 @@ server <- function(input, output) {
     data
   })
   
-  # -------------------------
   # KPIs
-  # -------------------------
-  
   output$total_sales_kpi <- renderText({
-    total_sales <- sum(filtered_data()$sales, na.rm = TRUE)
-    paste0("$", comma(round(total_sales, 2)))
+    paste0("$", comma(sum(filtered_data()$sales, na.rm = TRUE)))
   })
   
   output$total_profit_kpi <- renderText({
-    total_profit <- sum(filtered_data()$profit, na.rm = TRUE)
-    paste0("$", comma(round(total_profit, 2)))
+    paste0("$", comma(sum(filtered_data()$profit, na.rm = TRUE)))
   })
   
-  # -------------------------
-  # Category Chart
-  # -------------------------
+  output$profit_margin_kpi <- renderText({
+    
+    total_sales  <- sum(filtered_data()$sales, na.rm = TRUE)
+    total_profit <- sum(filtered_data()$profit, na.rm = TRUE)
+    
+    margin <- ifelse(total_sales == 0, 0,
+                     (total_profit / total_sales) * 100)
+    
+    paste0(round(margin, 2), "%")
+  })
   
+  # Category Plot
   output$category_plot <- renderPlotly({
     
-    category_summary <- filtered_data() |>
+    df <- filtered_data() |>
       group_by(category) |>
-      summarise(total_sales = sum(sales, na.rm = TRUE),
-                .groups = "drop")
+      summarise(total_sales = sum(sales), .groups = "drop")
     
-    p <- ggplot(category_summary,
+    p <- ggplot(df,
                 aes(x = reorder(category, total_sales),
                     y = total_sales,
-                    text = paste("Category:", category,
+                    text = paste(category,
                                  "<br>Sales:", comma(total_sales)))) +
       geom_col(fill = "#2E86C1") +
       coord_flip() +
-      labs(x = NULL, y = "Total Sales") +
-      theme_minimal(base_size = 14)
+      theme_minimal()
     
     ggplotly(p, tooltip = "text")
   })
   
-  # -------------------------
-  # Trend Chart
-  # -------------------------
-  
+  # Trend Plot
   output$trend_plot <- renderPlotly({
     
-    trend_data <- filtered_data() |>
+    df <- filtered_data() |>
       group_by(order_year) |>
-      summarise(total_sales = sum(sales, na.rm = TRUE),
-                .groups = "drop")
+      summarise(total_sales = sum(sales), .groups = "drop")
     
-    p <- ggplot(trend_data,
-                aes(x = order_year,
-                    y = total_sales,
+    p <- ggplot(df,
+                aes(order_year, total_sales,
                     text = paste("Year:", order_year,
                                  "<br>Sales:", comma(total_sales)))) +
       geom_line(color = "#00BFC4", linewidth = 1.2) +
       geom_point(color = "#00BFC4", size = 3) +
-      labs(x = "Year", y = "Total Sales") +
-      theme_minimal(base_size = 14)
+      theme_minimal()
     
     ggplotly(p, tooltip = "text")
   })
   
-  # -------------------------
-  # Region Comparison (Full Dataset)
-  # -------------------------
-  
+  # Region Comparison
   output$region_plot <- renderPlotly({
     
-    region_summary <- sales_data |>
+    df <- sales_data |>
       group_by(region) |>
-      summarise(total_sales = sum(sales, na.rm = TRUE),
-                .groups = "drop")
+      summarise(total_sales = sum(sales), .groups = "drop")
     
-    p <- ggplot(region_summary,
-                aes(x = reorder(region, total_sales),
-                    y = total_sales,
-                    text = paste("Region:", region,
+    p <- ggplot(df,
+                aes(reorder(region, total_sales),
+                    total_sales,
+                    text = paste(region,
                                  "<br>Sales:", comma(total_sales)))) +
       geom_col(fill = "#F8766D") +
       coord_flip() +
-      labs(x = NULL, y = "Total Sales") +
-      theme_minimal(base_size = 14)
+      theme_minimal()
     
     ggplotly(p, tooltip = "text")
   })
   
+  # Top 10 Products
+  output$top_products_plot <- renderPlotly({
+    
+    df <- filtered_data() |>
+      group_by(product_name) |>
+      summarise(total_sales = sum(sales), .groups = "drop") |>
+      arrange(desc(total_sales)) |>
+      slice_head(n = 10)
+    
+    p <- ggplot(df,
+                aes(reorder(product_name, total_sales),
+                    total_sales,
+                    text = paste(product_name,
+                                 "<br>Sales:", comma(total_sales)))) +
+      geom_col(fill = "#F4A261") +
+      coord_flip() +
+      theme_minimal()
+    
+    ggplotly(p, tooltip = "text")
+  })
 }
 
-# -------------------------
 # Run App
-# -------------------------
-
 shinyApp(ui = ui, server = server)
+
