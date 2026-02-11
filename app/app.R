@@ -13,10 +13,23 @@ ui <- fluidPage(
   
   br(),
   
-  h3("Key Performance Indicator"),
-  
-  verbatimTextOutput("total_sales_kpi")
+  fluidRow(
+    
+    column(
+      width = 6,
+      h3("Total Global Sales"),
+      verbatimTextOutput("total_sales_kpi")
+    ),
+    
+    column(
+      width = 6,
+      h3("Total Global Profit"),
+      verbatimTextOutput("total_profit_kpi")
+    )
+    
+  )
 )
+
 
 
 # -------------------------
@@ -25,15 +38,22 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   
-  # Calculate Total Sales
-  total_sales <- sum(sales_data$sales, na.rm = TRUE)
+  # Calculate KPIs
+  total_sales  <- sum(sales_data$sales, na.rm = TRUE)
+  total_profit <- sum(sales_data$profit, na.rm = TRUE)
   
-  # Send result to UI
+  # Send Sales to UI
   output$total_sales_kpi <- renderText({
-    paste("Total Global Sales:", round(total_sales, 2))
+    paste("$", format(round(total_sales, 2), big.mark = ","), sep = "")
+  })
+  
+  # Send Profit to UI
+  output$total_profit_kpi <- renderText({
+    paste("$", format(round(total_profit, 2), big.mark = ","), sep = "")
   })
   
 }
+
 
 
 # -------------------------
