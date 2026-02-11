@@ -1,3 +1,4 @@
+library(plotly)
 
 library(dplyr)
 library(readr)
