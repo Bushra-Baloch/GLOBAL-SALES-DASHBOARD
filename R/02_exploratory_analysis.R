@@ -1,35 +1,58 @@
-# Clean column names (make lowercase and replace spaces with underscores)
+# Load libraries
+library(dplyr)
+library(readr)
 
-colnames(sales_data) <- colnames(sales_data) |>
-  tolower() |>
-  gsub(" ", "_", x = _)
+# Load cleaned dataset
+sales_data <- read_csv("data/cleaned_global_sales.csv")
 
-# Check updated names
-colnames(sales_data)
+# -----------------------------
+# KPI: Total Sales & Profit
+# -----------------------------
 
-# Convert to proper Date format
-sales_data$order_date <- as.Date(sales_data$order_date, format = "%m/%d/%Y")
-sales_data$ship_date  <- as.Date(sales_data$ship_date, format = "%m/%d/%Y")
-# Check missing values in each column
-colSums(is.na(sales_data))
-str(sales_data)
+total_sales <- sum(sales_data$sales, na.rm = TRUE)
+total_profit <- sum(sales_data$profit, na.rm = TRUE)
 
+total_sales
+total_profit
 
+# -----------------------------
+# Sales by Region
+# -----------------------------
 
-# Extract Year and Month
-sales_data <- sales_data |>
-  mutate(
-    order_year  = year(order_date),
-    order_month = month(order_date, label = TRUE)
-  )
+sales_by_region <- sales_data |>
+  group_by(region) |>
+  summarise(
+    total_sales = sum(sales, na.rm = TRUE),
+    total_profit = sum(profit, na.rm = TRUE)
+  ) |>
+  arrange(desc(total_sales))
 
+sales_by_region
 
-str(sales_data)
-summary(sales_data)
+# -----------------------------
+# Sales by Category
+# -----------------------------
 
-# Save cleaned dataset
-write_csv(sales_data, "data/cleaned_global_sales.csv")
+sales_by_category <- sales_data |>
+  group_by(category) |>
+  summarise(
+    total_sales = sum(sales, na.rm = TRUE),
+    total_profit = sum(profit, na.rm = TRUE)
+  ) |>
+  arrange(desc(total_sales))
 
+sales_by_category
 
+# -----------------------------
+# Sales Trend by Year
+# -----------------------------
 
+sales_by_year <- sales_data |>
+  group_by(order_year) |>
+  summarise(
+    total_sales = sum(sales, na.rm = TRUE),
+    total_profit = sum(profit, na.rm = TRUE)
+  ) |>
+  arrange(order_year)
 
+sales_by_year
