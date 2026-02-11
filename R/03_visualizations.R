@@ -86,4 +86,22 @@ ggsave("sales_trend.png",
 
 ggsave("outputs/region_sales.png", plot = region_plot, width = 8, height = 5)
 
+region_interactive <- ggplotly(region_plot)
 
+region_interactive
+
+htmlwidgets::saveWidget(region_interactive, 
+                        "outputs/region_sales_interactive.html")
+
+category_interactive <- ggplotly(category_plot)
+
+category_interactive
+
+htmlwidgets::saveWidget(category_interactive, 
+                        "outputs/category_sales_interactive.html")
+trend_interactive <- ggplotly(trend_plot)
+
+trend_interactive
+
+htmlwidgets::saveWidget(trend_interactive, 
+                        "outputs/sales_trend_interactive.html")
