@@ -1,6 +1,6 @@
-# -------------------------
+# ===============================
 # Libraries
-# -------------------------
+# ===============================
 
 library(shiny)
 library(dplyr)
@@ -10,208 +10,119 @@ library(plotly)
 library(bslib)
 library(scales)
 
-# -------------------------
+# ===============================
 # Load Data
-# -------------------------
+# ===============================
 
-sales_data <- read_csv("../data/cleaned_global_sales.csv")
+sales_data <- read_csv(
+  "../data/cleaned_global_sales.csv",
+  show_col_types = FALSE
+)
 
-# -------------------------
+# ===============================
 # UI
-# -------------------------
+# ===============================
 
-ui <- navbarPage(
-  
-  title = "🌍 Global Sales Dashboard",
+ui <- page_sidebar(
   
   theme = bs_theme(
     version = 5,
-    bootswatch = "darkly"
+    bootswatch = "flatly",
+    primary = "#1F2D3D"
   ),
   
-  # Add smooth fade animation
-  header = tags$head(
-    tags$style(HTML("
-      .well {
-        animation: fadeIn 0.8s ease-in-out;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-    "))
-  ),
+  # ---------- Sidebar ----------
   
-  # -------------------------
-  # TAB 1 — Overview
-  # -------------------------
-  
-  tabPanel(
-    "Overview",
+  sidebar = sidebar(
+    width = 260,
     
-    br(),
+    h5("Filters", style = "font-weight:600; margin-top:10px;"),
     
-    fluidRow(
-      column(
-        width = 4,
-        selectInput(
-          "region_filter",
-          "Select Region:",
-          choices = c("All", sort(unique(sales_data$region))),
-          selected = "All"
-        )
-      ),
-      
-      column(
-        width = 4,
-        selectInput(
-          "year_filter",
-          "Select Year:",
-          choices = c("All", sort(unique(sales_data$order_year))),
-          selected = "All"
-        )
-      )
+    selectInput(
+      "region_filter",
+      "Region",
+      choices = c("All", sort(unique(sales_data$region))),
+      selected = "All"
     ),
     
-    br(),
-    
-    fluidRow(
-      
-      column(
-        width = 4,
-        wellPanel(
-          h4("Total Sales"),
-          h2(textOutput("total_sales_kpi"))
-        )
-      ),
-      
-      column(
-        width = 4,
-        wellPanel(
-          h4("Total Profit"),
-          h2(textOutput("total_profit_kpi"))
-        )
-      ),
-      
-      column(
-        width = 4,
-        wellPanel(
-          h4("Profit Margin"),
-          h2(textOutput("profit_margin_kpi"))
-        )
-      )
+    selectInput(
+      "year_filter",
+      "Year",
+      choices = c("All", sort(unique(sales_data$order_year))),
+      selected = "All"
     ),
     
-    br(),
+    hr(),
+    p("Global Sales Dashboard",
+      style = "font-size:13px; color:gray;")
+  ),
+  
+  # ---------- KPI Row ----------
+  
+  layout_column_wrap(
+    width = 1/4,
     
-    fluidRow(
-      column(
-        width = 12,
-        h4("Sales by Category"),
-        plotlyOutput("category_plot")
-      )
+    value_box(
+      "Total Sales",
+      textOutput("total_sales_kpi"),
+      showcase = icon("dollar-sign"),
+      theme = "primary"
+    ),
+    
+    value_box(
+      "Total Profit",
+      textOutput("total_profit_kpi"),
+      showcase = icon("chart-line"),
+      theme = "success"
+    ),
+    
+    value_box(
+      "Profit Margin",
+      textOutput("profit_margin_kpi"),
+      showcase = icon("percent"),
+      theme = "warning"
+    ),
+    
+    value_box(
+      "YoY Growth",
+      uiOutput("yoy_growth_kpi"),
+      showcase = icon("arrow-trend-up"),
+      theme = "info"
     )
   ),
   
-  # -------------------------
-  # TAB 2 — Trends
-  # -------------------------
+  # ---------- Charts ----------
   
-  tabPanel(
-    "Trends",
-    
-    br(),
-    
-    fluidRow(
-      column(
-        width = 12,
-        h4("Sales Trend Over Time"),
-        plotlyOutput("trend_plot")
-      )
-    )
+  card(
+    card_header("Sales by Category"),
+    card_body(plotlyOutput("category_plot", height = "400px"))
   ),
   
-  # -------------------------
-  # TAB 3 — Region Comparison
-  # -------------------------
-  
-  tabPanel(
-    "Region Comparison",
-    
-    br(),
-    
-    fluidRow(
-      column(
-        width = 12,
-        h4("Sales by Region"),
-        plotlyOutput("region_plot")
-      )
-    )
+  card(
+    card_header("Sales Trend"),
+    card_body(plotlyOutput("trend_plot", height = "400px"))
   ),
   
-  # -------------------------
-  # TAB 4 — Top Products
-  # -------------------------
+  card(
+    card_header("Sales by Region"),
+    card_body(plotlyOutput("region_plot", height = "400px"))
+  ),
   
-  tabPanel(
-    "Top Products",
-    
-    br(),
-    
-    fluidRow(
-      column(
-        width = 12,
-        h4("Top 10 Products by Sales"),
-        plotlyOutput("top_products_plot")
-      )
-    )
+  card(
+    card_header("Top 10 Products"),
+    card_body(plotlyOutput("top_products_plot", height = "400px"))
   )
 )
 
-# -------------------------
+# ===============================
 # Server
-# -------------------------
+# ===============================
 
 server <- function(input, output) {
-  # -------------------------
-  # Year-over-Year Growth KPI
-  # -------------------------
   
-  output$yoy_growth_kpi <- renderText({
-    
-    # Only calculate if a specific year is selected
-    if (input$year_filter == "All") {
-      return("Select Year")
-    }
-    
-    selected_year <- as.numeric(input$year_filter)
-    previous_year <- selected_year - 1
-    
-    current_sales <- sales_data |>
-      filter(order_year == selected_year) |>
-      summarise(total = sum(sales, na.rm = TRUE)) |>
-      pull(total)
-    
-    previous_sales <- sales_data |>
-      filter(order_year == previous_year) |>
-      summarise(total = sum(sales, na.rm = TRUE)) |>
-      pull(total)
-    
-    if (is.na(previous_sales) || previous_sales == 0) {
-      return("N/A")
-    }
-    
-    growth <- ((current_sales - previous_sales) / previous_sales) * 100
-    
-    arrow <- ifelse(growth >= 0, "▲", "▼")
-    
-    paste0(arrow, " ", round(growth, 2), "%")
-  })
+  # -------- Reactive Filtering --------
   
-  
-  # Multi-dimensional filtering
   filtered_data <- reactive({
-    
     data <- sales_data
     
     if (input$region_filter != "All") {
@@ -219,13 +130,14 @@ server <- function(input, output) {
     }
     
     if (input$year_filter != "All") {
-      data <- data |> filter(order_year == input$year_filter)
+      data <- data |> filter(order_year == as.numeric(input$year_filter))
     }
     
     data
   })
   
-  # KPIs
+  # -------- KPIs --------
+  
   output$total_sales_kpi <- renderText({
     paste0("$", comma(sum(filtered_data()$sales, na.rm = TRUE)))
   })
@@ -235,7 +147,6 @@ server <- function(input, output) {
   })
   
   output$profit_margin_kpi <- renderText({
-    
     total_sales  <- sum(filtered_data()$sales, na.rm = TRUE)
     total_profit <- sum(filtered_data()$profit, na.rm = TRUE)
     
@@ -245,55 +156,64 @@ server <- function(input, output) {
     paste0(round(margin, 2), "%")
   })
   
-  # Category Plotoutput$category_plot <- renderPlotly({
-  # Category Plot
-  output$category_plot <- renderPlotly({
+  # -------- YoY Growth --------
+  
+  output$yoy_growth_kpi <- renderUI({
     
-    category_summary <- filtered_data() |>
-      group_by(category) |>
-      summarise(
-        total_sales = sum(sales, na.rm = TRUE),
-        .groups = "drop"
-      ) |>
-      arrange(desc(total_sales)) |>
-      mutate(rank = row_number())
+    if (input$year_filter == "All") {
+      return(span("Select Year", style = "color:gray;"))
+    }
     
-    p <- ggplot(
-      category_summary,
-      aes(
-        x = reorder(category, total_sales),
-        y = total_sales,
-        text = paste0(
-          "<b>", category, "</b>",
-          "<br>Rank: ", rank,
-          "<br>Sales: $", scales::comma(total_sales)
-        )
-      )
-    ) +
-      geom_col(fill = "#34495E", width = 0.55) +
-      coord_flip() +
-      scale_y_continuous(labels = scales::dollar_format()) +
-      labs(x = NULL, y = NULL) +
-      theme_minimal(base_size = 14) +
-      theme(
-        panel.grid = element_blank(),
-        axis.text.y = element_text(size = 13, face = "bold"),
-        axis.text.x = element_text(size = 11),
-        plot.margin = margin(10, 20, 10, 10)
-      )
+    selected_year <- as.numeric(input$year_filter)
+    previous_year <- selected_year - 1
     
-    ggplotly(p, tooltip = "text") %>%
-      layout(
-        hoverlabel = list(
-          bgcolor = "#1F2D3D",
-          font = list(color = "red")
-        )
-      )
+    current_sales <- sales_data |>
+      filter(order_year == selected_year) |>
+      summarise(total = sum(sales)) |>
+      pull(total)
     
+    previous_sales <- sales_data |>
+      filter(order_year == previous_year) |>
+      summarise(total = sum(sales)) |>
+      pull(total)
+    
+    if (is.na(previous_sales) || previous_sales == 0) {
+      return(span("N/A", style = "color:gray;"))
+    }
+    
+    growth <- ((current_sales - previous_sales) / previous_sales) * 100
+    
+    arrow <- ifelse(growth >= 0, "▲", "▼")
+    color <- ifelse(growth >= 0, "#18BC9C", "#E74C3C")
+    
+    span(
+      paste0(arrow, " ", round(growth, 2), "%"),
+      style = paste0("color:", color, "; font-weight:600;")
+    )
   })
   
+  # -------- Category Plot --------
   
-  # Trend Plot
+  output$category_plot <- renderPlotly({
+    
+    df <- filtered_data() |>
+      group_by(category) |>
+      summarise(total_sales = sum(sales), .groups = "drop") |>
+      arrange(desc(total_sales))
+    
+    p <- ggplot(df,
+                aes(reorder(category, total_sales),
+                    total_sales)) +
+      geom_col(fill = "#2C3E50", width = 0.6) +
+      coord_flip() +
+      theme_minimal() +
+      theme(panel.grid = element_blank())
+    
+    ggplotly(p)
+  })
+  
+  # -------- Trend Plot --------
+  
   output$trend_plot <- renderPlotly({
     
     df <- filtered_data() |>
@@ -301,17 +221,16 @@ server <- function(input, output) {
       summarise(total_sales = sum(sales), .groups = "drop")
     
     p <- ggplot(df,
-                aes(order_year, total_sales,
-                    text = paste("Year:", order_year,
-                                 "<br>Sales:", comma(total_sales)))) +
-      geom_line(color = "#00BFC4", linewidth = 1.2) +
-      geom_point(color = "#00BFC4", size = 3) +
+                aes(order_year, total_sales)) +
+      geom_line(color = "#0072B2", linewidth = 1.2) +
+      geom_point(color = "#0072B2", size = 3) +
       theme_minimal()
     
-    ggplotly(p, tooltip = "text")
+    ggplotly(p)
   })
   
-  # Region Comparison
+  # -------- Region Plot --------
+  
   output$region_plot <- renderPlotly({
     
     df <- sales_data |>
@@ -320,17 +239,16 @@ server <- function(input, output) {
     
     p <- ggplot(df,
                 aes(reorder(region, total_sales),
-                    total_sales,
-                    text = paste(region,
-                                 "<br>Sales:", comma(total_sales)))) +
-      geom_col(fill = "#F8766D") +
+                    total_sales)) +
+      geom_col(fill = "#E74C3C") +
       coord_flip() +
       theme_minimal()
     
-    ggplotly(p, tooltip = "text")
+    ggplotly(p)
   })
   
-  # Top 10 Products
+  # -------- Top Products --------
+  
   output$top_products_plot <- renderPlotly({
     
     df <- filtered_data() |>
@@ -341,17 +259,13 @@ server <- function(input, output) {
     
     p <- ggplot(df,
                 aes(reorder(product_name, total_sales),
-                    total_sales,
-                    text = paste(product_name,
-                                 "<br>Sales:", comma(total_sales)))) +
+                    total_sales)) +
       geom_col(fill = "#F4A261") +
       coord_flip() +
       theme_minimal()
     
-    ggplotly(p, tooltip = "text")
+    ggplotly(p)
   })
 }
 
-# Run App
 shinyApp(ui = ui, server = server)
-
