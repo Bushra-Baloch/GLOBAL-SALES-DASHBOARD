@@ -83,7 +83,7 @@ To build a portfolio-ready business analytics dashboard suitable for remote Data
 
 ## 📬 Author
 
-**Your Name**
+Bushra Baloch
 
 Aspiring Data Analyst | Business Intelligence Enthusiast  
 Skilled in R, Data Visualization & Interactive Dashboards
