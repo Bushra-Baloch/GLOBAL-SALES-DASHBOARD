@@ -173,6 +173,41 @@ ui <- navbarPage(
 # -------------------------
 
 server <- function(input, output) {
+  # -------------------------
+  # Year-over-Year Growth KPI
+  # -------------------------
+  
+  output$yoy_growth_kpi <- renderText({
+    
+    # Only calculate if a specific year is selected
+    if (input$year_filter == "All") {
+      return("Select Year")
+    }
+    
+    selected_year <- as.numeric(input$year_filter)
+    previous_year <- selected_year - 1
+    
+    current_sales <- sales_data |>
+      filter(order_year == selected_year) |>
+      summarise(total = sum(sales, na.rm = TRUE)) |>
+      pull(total)
+    
+    previous_sales <- sales_data |>
+      filter(order_year == previous_year) |>
+      summarise(total = sum(sales, na.rm = TRUE)) |>
+      pull(total)
+    
+    if (is.na(previous_sales) || previous_sales == 0) {
+      return("N/A")
+    }
+    
+    growth <- ((current_sales - previous_sales) / previous_sales) * 100
+    
+    arrow <- ifelse(growth >= 0, "▲", "▼")
+    
+    paste0(arrow, " ", round(growth, 2), "%")
+  })
+  
   
   # Multi-dimensional filtering
   filtered_data <- reactive({
