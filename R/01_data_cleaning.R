@@ -26,6 +26,12 @@ colnames(sales_data) <- colnames(sales_data) |>
 
 # Check updated names
 colnames(sales_data)
+sales_data$order_date <- as.Date(sales_data$order_date)
+sales_data$ship_date  <- as.Date(sales_data$ship_date)
+
+sales_data$order_year  <- as.numeric(format(sales_data$order_date, "%Y"))
+sales_data$order_month <- as.numeric(format(sales_data$order_date, "%m"))
+
 
 # Convert to proper Date format
 sales_data$order_date <- as.Date(sales_data$order_date, format = "%m/%d/%Y")
