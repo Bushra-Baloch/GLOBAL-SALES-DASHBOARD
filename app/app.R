@@ -210,24 +210,53 @@ server <- function(input, output) {
     paste0(round(margin, 2), "%")
   })
   
+  # Category Plotoutput$category_plot <- renderPlotly({
   # Category Plot
   output$category_plot <- renderPlotly({
     
-    df <- filtered_data() |>
+    category_summary <- filtered_data() |>
       group_by(category) |>
-      summarise(total_sales = sum(sales), .groups = "drop")
+      summarise(
+        total_sales = sum(sales, na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      arrange(desc(total_sales)) |>
+      mutate(rank = row_number())
     
-    p <- ggplot(df,
-                aes(x = reorder(category, total_sales),
-                    y = total_sales,
-                    text = paste(category,
-                                 "<br>Sales:", comma(total_sales)))) +
-      geom_col(fill = "#2E86C1") +
+    p <- ggplot(
+      category_summary,
+      aes(
+        x = reorder(category, total_sales),
+        y = total_sales,
+        text = paste0(
+          "<b>", category, "</b>",
+          "<br>Rank: ", rank,
+          "<br>Sales: $", scales::comma(total_sales)
+        )
+      )
+    ) +
+      geom_col(fill = "#34495E", width = 0.55) +
       coord_flip() +
-      theme_minimal()
+      scale_y_continuous(labels = scales::dollar_format()) +
+      labs(x = NULL, y = NULL) +
+      theme_minimal(base_size = 14) +
+      theme(
+        panel.grid = element_blank(),
+        axis.text.y = element_text(size = 13, face = "bold"),
+        axis.text.x = element_text(size = 11),
+        plot.margin = margin(10, 20, 10, 10)
+      )
     
-    ggplotly(p, tooltip = "text")
+    ggplotly(p, tooltip = "text") %>%
+      layout(
+        hoverlabel = list(
+          bgcolor = "#1F2D3D",
+          font = list(color = "red")
+        )
+      )
+    
   })
+  
   
   # Trend Plot
   output$trend_plot <- renderPlotly({
